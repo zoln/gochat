@@ -8,7 +8,8 @@ package config
 import (
 	"github.com/spf13/viper"
 	"os"
-	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 )
 
@@ -30,6 +31,7 @@ const (
 	OpRoomSend            = 3 // send to room
 	OpRoomCountSend       = 4 // get online user count
 	OpRoomInfoSend        = 5 // send info to room
+	OpBuildTcpConn        = 6 // build tcp conn
 )
 
 type Config struct {
@@ -45,11 +47,19 @@ func init() {
 	Init()
 }
 
+func getCurrentDir() string {
+	_, fileName, _, _ := runtime.Caller(1)
+	aPath := strings.Split(fileName, "/")
+	dir := strings.Join(aPath[0:len(aPath)-1], "/")
+	return dir
+}
+
 func Init() {
 	once.Do(func() {
 		env := GetMode()
-		realPath, _ := filepath.Abs("./")
-		configFilePath := realPath + "/config/" + env + "/"
+		//realPath, _ := filepath.Abs("./")
+		realPath := getCurrentDir()
+		configFilePath := realPath + "/" + env + "/"
 		viper.SetConfigType("toml")
 		viper.SetConfigName("/connect")
 		viper.AddConfigPath(configFilePath)
@@ -120,7 +130,6 @@ type CommonEtcd struct {
 	BasePath          string `mapstructure:"basePath"`
 	ServerPathLogic   string `mapstructure:"serverPathLogic"`
 	ServerPathConnect string `mapstructure:"serverPathConnect"`
-	ServerId          int    `mapstructure:"serverId"`
 }
 
 type CommonRedis struct {
@@ -135,12 +144,15 @@ type Common struct {
 }
 
 type ConnectBase struct {
-	ServerId int    `mapstructure:"serverId"`
 	CertPath string `mapstructure:"certPath"`
 	KeyPath  string `mapstructure:"keyPath"`
 }
 
-type ConnectRpcAddress struct {
+type ConnectRpcAddressWebsockts struct {
+	Address string `mapstructure:"address"`
+}
+
+type ConnectRpcAddressTcp struct {
 	Address string `mapstructure:"address"`
 }
 
@@ -154,17 +166,35 @@ type ConnectBucket struct {
 }
 
 type ConnectWebsocket struct {
-	Bind string `mapstructure:"bind"`
+	ServerId string `mapstructure:"serverId"`
+	Bind     string `mapstructure:"bind"`
+}
+
+type ConnectTcp struct {
+	ServerId      string `mapstructure:"serverId"`
+	Bind          string `mapstructure:"bind"`
+	SendBuf       int    `mapstructure:"sendbuf"`
+	ReceiveBuf    int    `mapstructure:"receivebuf"`
+	KeepAlive     bool   `mapstructure:"keepalive"`
+	Reader        int    `mapstructure:"reader"`
+	ReadBuf       int    `mapstructure:"readBuf"`
+	ReadBufSize   int    `mapstructure:"readBufSize"`
+	Writer        int    `mapstructure:"writer"`
+	WriterBuf     int    `mapstructure:"writerBuf"`
+	WriterBufSize int    `mapstructure:"writeBufSize"`
 }
 
 type ConnectConfig struct {
-	ConnectBase       ConnectBase       `mapstructure:"connect-base"`
-	ConnectRpcAddress ConnectRpcAddress `mapstructure:"connect-rpcAddress"`
-	ConnectBucket     ConnectBucket     `mapstructure:"connect-bucket"`
-	ConnectWebsocket  ConnectWebsocket  `mapstructure:"connect-websocket"`
+	ConnectBase                ConnectBase                `mapstructure:"connect-base"`
+	ConnectRpcAddressWebSockts ConnectRpcAddressWebsockts `mapstructure:"connect-rpcAddress-websockts"`
+	ConnectRpcAddressTcp       ConnectRpcAddressTcp       `mapstructure:"connect-rpcAddress-tcp"`
+	ConnectBucket              ConnectBucket              `mapstructure:"connect-bucket"`
+	ConnectWebsocket           ConnectWebsocket           `mapstructure:"connect-websocket"`
+	ConnectTcp                 ConnectTcp                 `mapstructure:"connect-tcp"`
 }
 
 type LogicBase struct {
+	ServerId   string `mapstructure:"serverId"`
 	CpuNum     int    `mapstructure:"cpuNum"`
 	RpcAddress string `mapstructure:"rpcAddress"`
 	CertPath   string `mapstructure:"certPath"`
